@@ -64,16 +64,17 @@ jobs:
             echo "Applied mail-parser-wasm-worker patch"
           fi
 
-          # 捕获 deploy 输出到仓库根目录下的 deploy.log，便于上传为 artifact 进行调试
-          set -o pipefail
-          echo "Starting pnpm run deploy (logs will be saved to ../deploy.log)"
-          pnpm run deploy 2>&1 | tee ../deploy.log
-          deploy_exit=${PIPESTATUS[0]}
-          if [ "$deploy_exit" -ne 0 ]; then
-            echo "Command failed with exit code $deploy_exit"
-            exit "$deploy_exit"
+          if [ "$debug_mode" = "true" ]; then
+            pnpm run deploy
+          else
+            if pnpm run deploy >/dev/null 2>&1; then
+              echo "Deploy succeeded"
+            else
+              code=$?
+              echo "Command failed with exit code $code"
+              exit "$code"
+            fi
           fi
-
           echo "Deployed for tag ${{ github.ref_name }}"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -81,9 +82,4 @@ jobs:
           # ✅ 将 secret 映射到环境变量中
           WRANGLER_TOML_CONTENT: ${{ secrets.BACKEND_TOML }}
 
-      - name: Upload deploy log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: deploy-log
-          path: deploy.log
+C笔记
